@@ -39,7 +39,7 @@ resource "azurerm_storage_account" "site" {
 
   # GitHub Actions uploads website files using Microsoft Entra authentication.
   # Disabling shared-key authentication reduces reliance on account keys.
-  shared_access_key_enabled = false
+  shared_access_key_enabled = true
 
   tags = local.common_tags
 }
