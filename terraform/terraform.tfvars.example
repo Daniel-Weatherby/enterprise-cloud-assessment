@@ -1,0 +1,10 @@
+resource_group_name = "rg-enterprise-cloud-assessment"
+location            = "australiaeast"
+project_name        = "entcloud"
+environment         = "dev"
+
+tags = {
+  managed-by = "terraform"
+  workload   = "acu-assessment"
+  owner      = "student"
+}

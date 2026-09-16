@@ -1,0 +1,26 @@
+{
+  "project": "Enterprise Cloud Infrastructure Design",
+  "created_files": [
+    ".github/workflows/deploy.yml",
+    ".github/workflows/validate.yml",
+    ".gitignore",
+    "README.md",
+    "docs/presentation-run-sheet.md",
+    "docs/report-scaffold.md",
+    "docs/test-plan.md",
+    "scripts/bootstrap-oidc.ps1",
+    "terraform/backend.tf",
+    "terraform/main.tf",
+    "terraform/outputs.tf",
+    "terraform/providers.tf",
+    "terraform/terraform.tfvars.example",
+    "terraform/variables.tf",
+    "web/404.html",
+    "web/index.html"
+  ],
+  "notes": [
+    "Terraform configuration targets AzureRM provider ~> 5.4.",
+    "GitHub Actions uses OIDC instead of a long-lived Azure client secret.",
+    "One-time bootstrap creates the resource group, remote state storage, Entra app and RBAC."
+  ]
+}

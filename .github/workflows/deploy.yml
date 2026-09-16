@@ -1,0 +1,96 @@
+name: Deploy Azure Infrastructure and Website
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  ARM_USE_OIDC: "true"
+  ARM_USE_AZUREAD: "true"
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.2"
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.AZURE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+            -backend-config="key=enterprise-cloud.tfstate" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: |
+          terraform plan \
+            -var="resource_group_name=${{ vars.AZURE_RESOURCE_GROUP }}" \
+            -out=tfplan
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan
+
+      - name: Capture Terraform outputs
+        id: tfout
+        shell: bash
+        run: |
+          echo "storage_account=$(terraform output -raw storage_account_name)" >> "$GITHUB_OUTPUT"
+          echo "website_endpoint=$(terraform output -raw website_endpoint)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy website files
+        working-directory: .
+        shell: bash
+        run: |
+          az storage blob upload-batch \
+            --account-name "${{ steps.tfout.outputs.storage_account }}" \
+            --destination '$web' \
+            --source web \
+            --overwrite \
+            --auth-mode login
+
+      - name: Deployment summary
+        working-directory: .
+        shell: bash
+        run: |
+          echo "### Deployment complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Website: ${{ steps.tfout.outputs.website_endpoint }}" >> "$GITHUB_STEP_SUMMARY"
+
